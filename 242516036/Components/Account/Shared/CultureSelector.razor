@@ -1,0 +1,24 @@
+﻿@using System.Globalization
+@inject NavigationManager NavManager
+
+<div class="w-100">
+    <select class="form-select form-select-sm bg-transparent text-white border-0 shadow-none"
+            @onchange="OnSelected"
+            style="cursor: pointer; width: 100%; font-size: 0.9rem;">
+        <option value="tr" class="text-dark" selected="@(CultureInfo.CurrentCulture.Name.StartsWith("tr"))">🇹🇷 Türkçe (TR)</option>
+        <option value="en" class="text-dark" selected="@(CultureInfo.CurrentCulture.Name.StartsWith("en"))">🇺🇸 English (EN)</option>
+    </select>
+</div>
+
+@code {
+    private void OnSelected(ChangeEventArgs e)
+    {
+        var culture = e.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(culture)) return;
+
+        var uri = new Uri(NavManager.Uri)
+            .GetComponents(UriComponents.PathAndQuery, UriFormat.Unescaped);
+
+        NavManager.NavigateTo($"/Culture/Set?culture={culture}&redirectUri={uri}", forceLoad: true);
+    }
+}

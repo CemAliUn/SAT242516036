@@ -1,0 +1,100 @@
+﻿@page "/"
+@using ApexCharts
+@using MyDbModels
+@using Providers
+@inject IMyDbModel_Provider Provider
+@rendermode InteractiveServer
+
+<PageTitle>Ana Sayfa</PageTitle>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">📅 Aylık Müşteri Kayıt Grafiği</h5>
+                </div>
+                <div class="card-body">
+
+                    @if (chartDataList == null)
+                    {
+                        <p class="text-center text-muted">Veriler yükleniyor...</p>
+                    }
+                    else if (!chartDataList.Any())
+                    {
+                        <div class="alert alert-info">Görüntülenecek veri bulunamadı.</div>
+                    }
+                    else
+                    {
+                        <ApexChart TItem="ChartData"
+                                   Title="Son 6 Ay"
+                                   Options="options">
+
+                            <ApexPointSeries TItem="ChartData"
+                                             Items="chartDataList"
+                                             Name="Kayıt Olan Kişi"
+                                             SeriesType="SeriesType.Bar"
+                                             XValue="@(e => e.AyAdi)"
+                                             YValue="@(e => e.Sayi)"
+                                             Color="#0d6efd" />
+                        </ApexChart>
+                    }
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    // 1. Grafik için basit sınıf (Hata çıkmasını engeller)
+    public class ChartData
+    {
+        public string AyAdi { get; set; } = "";
+        public decimal Sayi { get; set; }
+    }
+
+    private List<ChartData>? chartDataList;
+
+    // 2. Grafik Ayarları
+    private ApexChartOptions<ChartData> options = new()
+        {
+            Chart = new Chart { Toolbar = new Toolbar { Show = false } },
+            PlotOptions = new PlotOptions { Bar = new PlotOptionsBar { Horizontal = false, ColumnWidth = "50%" } },
+            Xaxis = new XAxis { Title = new AxisTitle { Text = "Aylar" } },
+            Yaxis = new List<YAxis> { new YAxis { Title = new AxisTitle { Text = "Kişi Sayısı" } } }
+        };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Veritabanından veriyi çek
+            var result = await Provider.GetItems<MyDbModel_Result_KeyValue<string, int>>("sp_Stats_MonthlyRegistrations");
+
+            if (result != null)
+            {
+                // Gelen veriyi grafik sınıfımıza çeviriyoruz
+                chartDataList = result
+                    .Select(x => new ChartData
+                        {
+                            AyAdi = x.Key,
+                            Sayi = (decimal)x.Value
+                        })
+                    .Reverse() // Tarih sırasını düzeltmek için
+                    .ToList();
+            }
+            else
+            {
+                chartDataList = new List<ChartData>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Grafik yüklenirken hata: " + ex.Message);
+            chartDataList = new List<ChartData>();
+        }
+    }
+}

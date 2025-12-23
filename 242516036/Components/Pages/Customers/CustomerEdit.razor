@@ -1,0 +1,178 @@
+﻿@page "/customers/edit/{Id:int}"
+@using DbModels
+@using Providers
+@using MyDbModels
+@using global::DbModels
+@inject IMyDbModel_Provider Provider
+@inject NavigationManager NavManager
+@rendermode InteractiveServer
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0">Müşteri Düzenle</h4>
+                </div>
+                <div class="card-body">
+
+                    @if (isLoading)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Yükleniyor...</span>
+                            </div>
+                            <p>Kayıt bilgileri getiriliyor...</p>
+                        </div>
+                    }
+                    else if (customer == null)
+                    {
+                        <div class="alert alert-danger">Kayıt bulunamadı.</div>
+                        <button class="btn btn-secondary" @onclick="GoBack">Listeye Dön</button>
+                    }
+                    else
+                    {
+                        <EditForm Model="@customer" OnValidSubmit="UpdateCustomer" FormName="CustomerEditForm">
+                            <DataAnnotationsValidator />
+
+                            @if (!string.IsNullOrEmpty(errorMessage))
+                            {
+                                <div class="alert alert-danger">@errorMessage</div>
+                            }
+
+                            <input type="hidden" value="@customer.Id" />
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Adı</label>
+                                    <InputText @bind-Value="customer.FirstName" class="form-control" />
+                                    <ValidationMessage For="@(() => customer.FirstName)" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Soyadı</label>
+                                    <InputText @bind-Value="customer.LastName" class="form-control" />
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">E-Posta</label>
+                                    <InputText @bind-Value="customer.Email" class="form-control" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Telefon</label>
+                                    <InputText @bind-Value="customer.Phone" class="form-control" />
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <div class="form-check form-switch">
+                                        <InputCheckbox @bind-Value="customer.IsActive" class="form-check-input" id="isActiveSwitch" />
+                                        <label class="form-check-label" for="isActiveSwitch">
+                                            Kayıt Aktif mi? (@(customer.IsActive ? "Evet" : "Hayır"))
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3 text-muted small">
+                                <div class="col-6">
+                                    Mevcut Puan: <strong>@customer.LoyaltyPoints</strong>
+                                </div>
+                                <div class="col-6 text-end">
+                                    Kayıt Tarihi: @customer.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="button" class="btn btn-secondary me-2" @onclick="GoBack">İptal</button>
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="bi bi-pencil-square"></i> Güncelle
+                                </button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private Customer customer { get; set; }
+
+    private bool isLoading = true;
+    private string errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Eğer form submit edildiyse tekrar yükleme yapma (Blazor Form mekanizması)
+        if (customer == null)
+        {
+            await LoadCustomerData();
+        }
+    }
+
+    private async Task LoadCustomerData()
+    {
+        try
+        {
+            isLoading = true;
+            // 1. Veriyi Getir (sp_Customer_GetById)
+            // Parametre olarak sadece ID yolluyoruz
+            var result = await Provider.GetItems<Customer>("sp_Customer_GetById", ("Id", Id));
+
+            customer = result.FirstOrDefault();
+
+            if (customer == null)
+            {
+                errorMessage = "Kayıt bulunamadı veya silinmiş.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Veri yüklenirken hata: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task UpdateCustomer()
+    {
+        try
+        {
+            if (customer == null) return;
+
+            // 2. Güncelle (sp_Customer_Update)
+            // SQL Prosedürünün beklediği parametreler: @Id, @FirstName, @LastName, @Email, @Phone, @IsActive
+
+            await Provider.Execute<Customer>("sp_Customer_Update",
+                ("Id", customer.Id),
+                ("FirstName", customer.FirstName),
+                ("LastName", customer.LastName),
+                ("Email", customer.Email ?? ""),
+                ("Phone", customer.Phone ?? ""),
+                ("IsActive", customer.IsActive)
+            );
+
+            // Başarılıysa listeye dön
+            NavManager.NavigateTo("/customers");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Güncelleme hatası: {ex.Message}";
+        }
+    }
+
+    private void GoBack()
+    {
+        NavManager.NavigateTo("/customers");
+    }
+}

@@ -1,0 +1,102 @@
+﻿@page "/logs"
+@using DbModels
+@using Providers
+@using MyDbModels
+@using global::DbModels
+@inject IMyDbModel_Provider Provider
+@rendermode InteractiveServer
+
+<div class="container-fluid">
+    <h3>📋 Sistem Logları (Son 200 İşlem)</h3>
+    <p class="text-muted">Veritabanı triggerları ve uygulama içi işlemlerin kayıtları.</p>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-bordered table-hover font-monospace" style="font-size: 0.9rem;">
+            <thead class="table-dark">
+                <tr>
+                    <th>#</th>
+                    <th>Tarih</th>
+                    <th>Tablo</th>
+                    <th>İşlem</th>
+                    <th>Kayıt ID</th>
+                    <th style="width: 30%;">Detay (Yeni/Mesaj)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (logs == null)
+                {
+                    <tr><td colspan="6" class="text-center">Yükleniyor...</td></tr>
+                }
+                else if (logs.Count == 0)
+                {
+                    <tr><td colspan="6" class="text-center">Hiç log kaydı yok.</td></tr>
+                }
+                else
+                {
+                    @foreach (var item in logs)
+                    {
+                        <tr class="@GetRowClass(item.Operation)">
+                            <td>@item.Id</td>
+                            <td>@item.LogDate.ToString("dd.MM.yyyy HH:mm:ss")</td>
+                            <td>@item.TableName</td>
+                            <td>
+                                <span class="badge @GetBadgeClass(item.Operation)">
+                                    @item.Operation
+                                </span>
+                            </td>
+                            <td>@item.RecordId</td>
+                            <td>
+                                <div style="max-height: 60px; overflow-y: auto;">
+                                    @if (!string.IsNullOrEmpty(item.NewValue))
+                                    {
+                                        <span>@item.NewValue</span>
+                                    }
+                                    else if (!string.IsNullOrEmpty(item.OldValue))
+                                    {
+                                        <span class="text-muted">Silinen Veri: @item.OldValue</span>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private List<SystemLog> logs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Provider üzerinden SP çağırıp listeyi alıyoruz
+        var result = await Provider.GetItems<SystemLog>("sp_System_Log_List");
+        logs = result.ToList();
+    }
+
+    // Satır Rengi Ayarlayıcı
+    private string GetRowClass(string operation)
+    {
+        return operation switch
+        {
+            "DELETE" => "table-danger", // Silme işlemleri kırmızımsı
+            "UPDATE" => "table-warning", // Güncellemeler sarımsı
+            "INSERT" => "table-success", // Eklemeler yeşilimsi
+            _ => ""
+        };
+    }
+
+    // Badge (Etiket) Rengi Ayarlayıcı
+    private string GetBadgeClass(string operation)
+    {
+        return operation switch
+        {
+            "DELETE" => "bg-danger",
+            "UPDATE" => "bg-warning text-dark",
+            "INSERT" => "bg-success",
+            "Create" => "bg-success", // Kod tarafından gelen
+            _ => "bg-info text-dark"
+        };
+    }
+}
