@@ -8,7 +8,8 @@
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">@Loc["AppName"]</a> <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+        <a class="navbar-brand" href="">@Loc["AppName"]</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
     </div>
@@ -53,11 +54,6 @@
                 </div>
             </Authorized>
             <NotAuthorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="Account/Register">
-                        <span class="bi bi-person-nav" aria-hidden="true"></span> @Loc["Register"]
-                    </NavLink>
-                </div>
                 <div class="nav-item px-3">
                     <NavLink class="nav-link" href="Account/Login">
                         <span class="bi bi-person-badge" aria-hidden="true"></span> @Loc["Login"]
